@@ -101,10 +101,10 @@ def jacobi(
         msg = "maxgrad must be >= 0"
         raise ValueError(msg)
     if step is not None:
-        if not (0 < step[0] < 0.5):
+        if not 0 < step[0] < 0.5:
             msg = "step[0] must be between 0 and 0.5"
             raise ValueError(msg)
-        if not (0 < step[1] < 1):
+        if not 0 < step[1] < 1:
             msg = "step[1] must be between 0 and 1"
             raise ValueError(msg)
     if method is not None and method not in (-1, 0, 1):
