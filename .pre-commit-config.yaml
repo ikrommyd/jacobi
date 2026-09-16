@@ -55,7 +55,8 @@ repos:
       - id: mypy
         files: ^src
         args: []
-        additional_dependencies: [numpy]
+        # numpy >= 2.5 stubs need Python 3.12 syntax; mypy targets 3.10
+        additional_dependencies: ["numpy~=2.4.0"]
 
   - repo: https://github.com/codespell-project/codespell
     rev: "v2.4.3"
@@ -83,7 +84,6 @@ repos:
     hooks:
       - id: check-dependabot
       - id: check-github-workflows
-      - id: check-readthedocs
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: "v1.30.1"

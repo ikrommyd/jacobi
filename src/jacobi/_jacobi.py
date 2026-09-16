@@ -74,26 +74,6 @@ def jacobi(
     array, array
         Derivative and its error estimate.
     """
-    if diagonal:
-        # TODO maybe solve this without introducing a wrapper function
-        j, je = jacobi(
-            lambda dx, x, *args: fn(x + dx, *args),
-            0,
-            x,
-            *args,
-            method=method,
-            rtol=rtol,
-            maxiter=maxiter,
-            maxgrad=maxgrad,
-            step=step,
-            diagnostic=diagnostic,
-        )
-        if mask is not None:
-            m = np.asarray(mask)
-            j[~m] = 0.0
-            je[~m] = 0.0
-        return j, je
-
     if maxiter <= 0:
         msg = "maxiter must be > 0"
         raise ValueError(msg)
@@ -112,9 +92,6 @@ def jacobi(
         raise ValueError(msg)
 
     xa = np.asarray(x, dtype=float)
-    if xa.size == 0:
-        msg = "x must not be empty"
-        raise ValueError(msg)
     ma: NDArray[Any] | None = None
     if mask is not None:
         ma = np.asarray(mask)
@@ -124,6 +101,31 @@ def jacobi(
         if ma.shape != xa.shape:
             msg = "mask shape must match x shape"
             raise ValueError(msg)
+
+    if xa.size == 0 or (ma is not None and not ma.any()):
+        # nothing to compute, but the output shape is needed for the result
+        _, fval = _wrap_function_if_needed(fn, fn(xa, *args))
+        shape = np.shape(fval) if diagonal else np.shape(fval) + xa.shape
+        return np.zeros(shape), np.zeros(shape)
+
+    if diagonal:
+        # TODO maybe solve this without introducing a wrapper function
+        j, je = jacobi(
+            lambda dx, x, *args: fn(x + dx, *args),
+            0,
+            x,
+            *args,
+            method=method,
+            rtol=rtol,
+            maxiter=maxiter,
+            maxgrad=maxgrad,
+            step=step,
+            diagnostic=diagnostic,
+        )
+        if ma is not None:
+            j[~ma] = 0.0
+            je[~ma] = 0.0
+        return j, je
 
     if diagnostic is not None:
         diagnostic["method"] = np.zeros(xa.size, dtype=np.int8)
@@ -170,7 +172,7 @@ def jacobi(
             fdi = np.asarray(_derive(md, f0, fn, xa, kx, h[i], args))
             fd.append(np.reshape(fdi, -1) if i == 1 else fdi[todo])
             if diagnostic is not None:
-                diagnostic["call"][todo, k] += 2
+                diagnostic["call"][todo.reshape(-1), k] += 2
                 diagnostic["iteration"][k] += 1
 
             # polynomial fit with one extra degree of freedom;
@@ -216,10 +218,8 @@ def jacobi(
 
         it.iternext()
 
-    if jac is None or err is None:
-        msg = "mask must select at least one element"
-        raise ValueError(msg)
-
+    assert jac is not None
+    assert err is not None
     return jac, err
 
 
@@ -309,12 +309,16 @@ def _wrap_function_if_needed(
 ) -> tuple[Callable[..., Any], Any]:
     if not isinstance(fval, float):
         try:
-            fval = np.asarray(fval, dtype=float)
+            fval_a = np.asarray(fval, dtype=float)
         except ValueError as e:
             msg = (
                 "function return value cannot be converted into "
                 "1D numpy array of floats"
             )
             raise ValueError(msg) from e
-        return lambda *args: np.asarray(fn(*args)), fval
+        if isinstance(fval, np.ndarray):
+            # fn already returns arrays and needs no wrapper; wrapping it again
+            # for every element of x exceeds the recursion limit for large x
+            return fn, fval_a
+        return lambda *args: np.asarray(fn(*args)), fval_a
     return fn, fval

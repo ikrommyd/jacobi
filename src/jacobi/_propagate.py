@@ -218,7 +218,7 @@ def _propagate_independent(
         elif ycov.ndim == 1 and yc.ndim == 2:
             ycov = np.diag(ycov) + yc
         else:
-            ycov += yc
+            ycov = ycov + yc
 
     if ycov is None:
         msg = "at least one pair of value and covariance must be passed"

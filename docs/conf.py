@@ -12,7 +12,11 @@ DIR = Path(__file__).parent.resolve()
 readme = (DIR.parent / "README.rst").read_text(encoding="utf-8")
 readme = readme.replace("https://hdembinski.github.io/jacobi/_images/", "_static/")
 stub = (DIR / "index.rst.in").read_text(encoding="utf-8")
-(DIR / "index.rst").write_text(stub + "\n" + readme, encoding="utf-8")
+index = DIR / "index.rst"
+content = stub + "\n" + readme
+# Only write when needed, otherwise sphinx-autobuild rebuilds in a loop.
+if not index.is_file() or index.read_text(encoding="utf-8") != content:
+    index.write_text(content, encoding="utf-8")
 
 project = "jacobi"
 copyright = "2020, Hans Dembinski"

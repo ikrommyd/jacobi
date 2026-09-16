@@ -96,7 +96,7 @@ def docs(session: nox.Session) -> None:
     args, posargs = parser.parse_known_args(session.posargs)
     serve = args.builder == "html" and session.interactive
 
-    session.install("-e.", *doc_deps, "sphinx-autobuild")
+    session.install("-e.", *doc_deps, *(["sphinx-autobuild"] if serve else []))
 
     shared_args = (
         "-n",  # nitpicky mode

@@ -111,6 +111,8 @@ def test_two_arguments_1():
     z, zcov = propagate(fn1, x, xcov, y, ycov)
     assert z.ndim == 0
     assert zcov.ndim == 0
+    # a scalar result must behave like a float for callers
+    assert isinstance(zcov, float)
 
     def fn2(r):
         return fn1(r[0], r[1])
@@ -365,3 +367,23 @@ def test_two_arguments_mixed_cov_dimensions():
     assert_allclose(z2, z_ref)
     assert_allclose(zcov1, zcov_ref)
     assert_allclose(zcov2, zcov_ref)
+
+
+@pytest.mark.parametrize("diagonal", [False, True])
+def test_fully_masked_argument(diagonal):
+    # argument a is exactly known, only b contributes to the uncertainty
+    def f(a, b):
+        return a * b
+
+    a = np.array([1.0, 2.0])
+    a_var = np.array([0.1, 0.1])
+    b = np.array([3.0, 4.0])
+    b_var = np.array([0.2, 0.3])
+
+    mask = [[False, False], [True, True]]
+    c, c_var = propagate(f, a, a_var, b, b_var, mask=mask, diagonal=diagonal)
+
+    assert_allclose(c, a * b)
+    if c_var.ndim == 2:
+        c_var = np.diag(c_var)
+    assert_allclose(c_var, a**2 * b_var)
